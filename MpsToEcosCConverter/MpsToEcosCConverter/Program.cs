@@ -14,7 +14,7 @@ namespace MpsToEcosCConverter
         {
             if (null == args || args.Length == 0)
             {
-                args = new[] { "demo.mps", "demo2.mps", "afiro.mps" };
+                args = new[] { "lpa.mps", "lpa2.mps","lpa_ilp.mps", "afiro.mps", "noswot.mps" };
             }
 
             foreach (var filename in args)
@@ -43,24 +43,29 @@ namespace MpsToEcosCConverter
                             continue;
                         case "COLUMNS":
                             curreHandler = new ColumnLineHandler();
-                            break;
+                            continue;
                         case "RHS":
                             curreHandler = new RHSLineHandler();
-                            break;
+                            continue;
                         case "ENDATA":
                             curreHandler = null;
-                            break;
+                            continue;
+                        case "BOUNDS":
+                            curreHandler = new BoundsLineHandler();
+                            continue;
                         default:
                             curreHandler.HandleLine(line, matrix, constraints, variables);
                             break;
                     }
                 }
 
+                var bbMode = variables.Values.Any(v => v.VariableType == Variable.VariableTypes.Boolean || v.VariableType == Variable.VariableTypes.Integer);
+
                 var sb = new StringBuilder();
                 n = variables.Count;
                 var p = constraints.Values.Count(c => c.RowType != Row.RowTypes.N);
 
-                sb.AppendLine($"int lp_{problemName.Replace(" ", "_")}()");
+                sb.AppendLine($"int {(bbMode ? "i" : "")}lp_{problemName.Replace(" ", "_")}()");
                 sb.AppendLine("{");
 
                 sb.AppendLine($"idxint n = {n};");
@@ -121,14 +126,90 @@ namespace MpsToEcosCConverter
                 sb.AppendLine($@"pfloat Apr[{apr.Count}] = {{{string.Join(", ", apr)}}};");
                 sb.AppendLine($"pfloat b[{p}] = {{{string.Join(", ", constraints.Values.Where(c => c.RowType != Row.RowTypes.N).Select(c => c.B))}}};");
 
+                if (bbMode)
+                {
+                    {
+                        // add bool
+                        var num_bool = variables.Values.Count(v => v.VariableType == Variable.VariableTypes.Boolean);
+                        sb.AppendLine($"idxint num_bool = {num_bool};");
+                        if (num_bool == 0)
+                        {
+                            sb.AppendLine("idxint *bool_idx = NULL;");
+                        }
+                        else
+                        {
+                            var boolIdx = new List<int>();
+                            for (int i = 0; i < variables.Values.Count; i++)
+                            {
+                                if (variables.Values.ElementAt(i).VariableType == Variable.VariableTypes.Boolean)
+                                {
+                                    boolIdx.Add(i);
+                                }
+                            }
+
+                            sb.AppendLine($"idxint bool_idx[{num_bool}] = {{{string.Join(", ", boolIdx)}}};");
+                        }
+                    }
+                    {
+                        // same code for int
+                        var num_int = variables.Values.Count(v => v.VariableType == Variable.VariableTypes.Integer);
+                        sb.AppendLine($"idxint num_int = {num_int};");
+                        if (num_int == 0)
+                        {
+                            sb.AppendLine("idxint *int_idx = NULL;");
+                        }
+                        else
+                        {
+                            var intIdx = new List<int>();
+                            for (int i = 0; i < variables.Values.Count; i++)
+                            {
+                                if (variables.Values.ElementAt(i).VariableType == Variable.VariableTypes.Integer)
+                                {
+                                    intIdx.Add(i);
+                                }
+                            }
+
+                            sb.AppendLine($"idxint int_idx[{num_int}] = {{{string.Join(", ", intIdx)}}};");
+                        }
+                    }
+                }
+
                 var workName = problemName.Split(" ")[0];
-                sb.AppendLine($"pwork *{workName};");
+                if (bbMode)
+                {
+                    sb.Append($"ecos_bb_pwork *{workName};");
+                }
+                else
+                {
+                    sb.AppendLine($"pwork *{workName};");
+                }
+
                 sb.AppendLine("idxint exitFlag;");
-                sb.AppendLine($"{workName} = ECOS_setup(n, m, p, l, nCones, q, 0, Gpr, Gjc, Gir, Apr, Ajc, Air, c, h, b);");
-                sb.AppendLine($"exitFlag = ECOS_solve({workName});");
-                sb.AppendLine($"for ( int i = 0; i < n; i++) {{ PRINTTEXT(\"X % d: % f\\n\", i, {workName}->x[i]); }}");
-                sb.AppendLine($"PRINTTEXT(\"Objective: %f\\n\", {workName}->best_info->pcost);");
-                sb.AppendLine($"ECOS_cleanup({workName}, 0);");
+
+                if (bbMode)
+                {
+                    sb.AppendLine($"{workName} = ECOS_BB_setup(n, m, p, l, nCones, q, 0, Gpr, Gjc, Gir, Apr, Ajc, Air, c, h, b, num_bool, bool_idx, num_int, int_idx, NULL);");
+                    sb.AppendLine($"exitFlag = ECOS_BB_solve({workName});");
+                }
+                else
+                {
+                    sb.AppendLine($"{workName} = ECOS_setup(n, m, p, l, nCones, q, 0, Gpr, Gjc, Gir, Apr, Ajc, Air, c, h, b);");
+                    sb.AppendLine($"exitFlag = ECOS_solve({workName});");
+                }
+
+                sb.AppendLine($"for ( int i = 0; i < n; i++) {{ PRINTTEXT(\"X %d: %f\\n\", i, {workName}->x[i]); }}");
+
+                if (bbMode)
+                {
+                    sb.AppendLine($"PRINTTEXT(\"UB: %f\\n\", {workName}->nodes->U);");
+                    sb.AppendLine($"PRINTTEXT(\"LB: %f\\n\", {workName}->nodes->L);");
+                }
+                else
+                {
+                    sb.AppendLine($"PRINTTEXT(\"Objective: %f\\n\", {workName}->best_info->pcost);");
+                    sb.AppendLine($"ECOS_cleanup({workName}, 0);");
+                }
+
                 sb.AppendLine("return exitFlag;");
                 sb.AppendLine("}");
                 File.WriteAllText($"{problemName}.c", sb.ToString());

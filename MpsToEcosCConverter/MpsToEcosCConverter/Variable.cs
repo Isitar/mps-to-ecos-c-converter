@@ -8,9 +8,19 @@ namespace MpsToEcosCConverter
     {
         public string Name { get; set; }
 
-        public Variable(string name)
+        public enum VariableTypes
+        {
+            Continuous,
+            Boolean,
+            Integer
+        }
+
+        public VariableTypes VariableType { get; set; }
+
+        public Variable(string name, VariableTypes variableType = VariableTypes.Continuous)
         {
             Name = name;
+            VariableType = variableType;
         }
 
         public override string ToString()
