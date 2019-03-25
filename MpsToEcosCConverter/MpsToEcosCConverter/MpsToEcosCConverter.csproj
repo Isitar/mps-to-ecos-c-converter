@@ -9,6 +9,9 @@
     <None Update="afiro.mps">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="bell5.mps">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="lpa_ilp.mps">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
