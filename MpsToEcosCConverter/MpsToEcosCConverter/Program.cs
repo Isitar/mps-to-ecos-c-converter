@@ -14,7 +14,7 @@ namespace MpsToEcosCConverter
         {
             if (null == args || args.Length == 0)
             {
-                args = new[] { "lpa.mps", "lpa2.mps","lpa_ilp.mps", "afiro.mps", "noswot.mps", "bell5.mps" };
+                args = new[] { "lpa.mps", "lpa2.mps","lpa_ilp.mps", "afiro.mps", "noswot.mps", "bell5.mps", "gen-ip054.mps" };
             }
 
             foreach (var filename in args)
@@ -40,7 +40,7 @@ namespace MpsToEcosCConverter
                     {
                         case "NAME":
                             curreHandler = null;
-                            problemName = new String(line.Replace("NAME", "").SkipWhile(c => c == ' ').ToArray());
+                            problemName = new string(line.Replace("NAME", "").SkipWhile(c => c == ' ').ToArray()).Replace(" ", "_").Replace("-","_");
                             continue;
                         case "ROWS":
                             curreHandler = new RowLineHandler();
@@ -69,7 +69,7 @@ namespace MpsToEcosCConverter
                 n = variables.Count;
                 var p = constraints.Values.Count(c => c.RowType != Row.RowTypes.N);
 
-                sb.AppendLine($"int {(bbMode ? "i" : "")}lp_{problemName.Replace(" ", "_")}()");
+                sb.AppendLine($"int {(bbMode ? "i" : "")}lp_{problemName.Replace(" ", "_")}({(bbMode ? "const idxint branching_strategy" : "")})");
                 sb.AppendLine("{");
 
                 sb.AppendLine($"idxint n = {n};");
@@ -192,8 +192,12 @@ namespace MpsToEcosCConverter
 
                 if (bbMode)
                 {
-                    sb.AppendLine($"{workName} = ECOS_BB_setup(n, m, p, l, nCones, q, 0, Gpr, Gjc, Gir, Apr, Ajc, Air, c, h, b, num_bool, bool_idx, num_int, int_idx, NULL);");
+                    sb.AppendLine("settings_bb * settings = get_default_ECOS_BB_settings();");
+                    sb.AppendLine("settings->branching_strategy = branching_strategy;");
+                    sb.AppendLine($"{workName} = ECOS_BB_setup(n, m, p, l, nCones, q, 0, Gpr, Gjc, Gir, Apr, Ajc, Air, c, h, b, num_bool, bool_idx, num_int, int_idx, settings);");
                     sb.AppendLine($"exitFlag = ECOS_BB_solve({workName});");
+                    sb.AppendLine("PRINTTEXT(\"exit flag: % d\\n\", exitFlag);");
+                    sb.AppendLine($"PRINTTEXT(\"cost: %f\\n\", eddot({workName}->ecos_prob->n, {workName}->ecos_prob->x, {workName}->ecos_prob->c));");
                 }
                 else
                 {
@@ -207,6 +211,7 @@ namespace MpsToEcosCConverter
                 {
                     sb.AppendLine($"PRINTTEXT(\"UB: %f\\n\", {workName}->nodes->U);");
                     sb.AppendLine($"PRINTTEXT(\"LB: %f\\n\", {workName}->nodes->L);");
+                    sb.AppendLine($"ECOS_BB_cleanup({workName}, 0);");
                 }
                 else
                 {

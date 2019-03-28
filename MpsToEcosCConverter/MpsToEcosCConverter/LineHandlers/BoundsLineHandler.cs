@@ -34,7 +34,7 @@ namespace MpsToEcosCConverter.LineHandlers
             var slackVariable = new Variable(row.Name);
             variables.Add(slackVariable.Name, slackVariable);
             rows.Add(row.Name, row);
-            matrix.Add(row, new List<VariableInRow> {new VariableInRow(variable,1), new VariableInRow(slackVariable, 1)});
+            matrix.Add(row, new List<VariableInRow> {new VariableInRow(variable,1), new VariableInRow(slackVariable, row.RowType == Row.RowTypes.U ? -1 : 1) });
         }
     }
 }
