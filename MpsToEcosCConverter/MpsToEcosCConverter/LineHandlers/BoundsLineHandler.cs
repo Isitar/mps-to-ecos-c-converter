@@ -18,7 +18,14 @@ namespace MpsToEcosCConverter.LineHandlers
             var variable = variables[varName];
 
             // if var is integer and upper bound is set to 1, var becomes boolean
-            if (variable.VariableType == Variable.VariableTypes.Integer && type.Equals("UP") && bnd == 1.0)
+            if (variable.VariableType == Variable.VariableTypes.Integer && type.ToUpper().Equals("UP") && bnd == 1.0)
+            {
+                variable.VariableType = Variable.VariableTypes.Boolean;
+                return;
+            }
+
+            // if bound is type BV -> variable is binary
+            if (type.ToUpper().Equals("BV"))
             {
                 variable.VariableType = Variable.VariableTypes.Boolean;
                 return;
