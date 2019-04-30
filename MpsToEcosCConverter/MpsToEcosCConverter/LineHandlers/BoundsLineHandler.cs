@@ -13,14 +13,13 @@ namespace MpsToEcosCConverter.LineHandlers
             var type = splitUp[0];
             var boundName = splitUp[1];
             var varName = splitUp[2];
-            var bnd = double.Parse(splitUp[3]);
+
 
             var variable = variables[varName];
 
-            // if var is integer and upper bound is set to 1, var becomes boolean
-            if (variable.VariableType == Variable.VariableTypes.Integer && type.ToUpper().Equals("UP") && bnd == 1.0)
+            // free variable
+            if (type.ToUpper().Equals("FR"))
             {
-                variable.VariableType = Variable.VariableTypes.Boolean;
                 return;
             }
 
@@ -31,6 +30,14 @@ namespace MpsToEcosCConverter.LineHandlers
                 return;
             }
 
+            var bnd = double.Parse(splitUp[3]);
+
+            // if var is integer and upper bound is set to 1, var becomes boolean
+            if (variable.VariableType == Variable.VariableTypes.Integer && type.ToUpper().Equals("UP") && bnd == 1.0)
+            {
+                variable.VariableType = Variable.VariableTypes.Boolean;
+                return;
+            }
             // otherwise introduce a new constraint
             var row = new Row()
             {
@@ -41,7 +48,7 @@ namespace MpsToEcosCConverter.LineHandlers
             var slackVariable = new Variable(row.Name);
             variables.Add(slackVariable.Name, slackVariable);
             rows.Add(row.Name, row);
-            matrix.Add(row, new List<VariableInRow> {new VariableInRow(variable,1), new VariableInRow(slackVariable, row.RowType == Row.RowTypes.U ? -1 : 1) });
+            matrix.Add(row, new List<VariableInRow> { new VariableInRow(variable, 1), new VariableInRow(slackVariable, row.RowType == Row.RowTypes.U ? -1 : 1) });
         }
     }
 }

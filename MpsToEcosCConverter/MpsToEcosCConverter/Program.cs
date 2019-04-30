@@ -14,7 +14,7 @@ namespace MpsToEcosCConverter
         {
             if (null == args || args.Length == 0)
             {
-                args = new[] { "lpa.mps", "lpa2.mps","lpa_ilp.mps", "afiro.mps", "noswot.mps", "bell5.mps", "gen-ip054.mps" };
+                args = new[] {"vpm2.mps", "lpa.mps", "lpa2.mps","lpa_ilp.mps", "afiro.mps", "noswot.mps", "bell5.mps", "gen-ip054.mps" };
             }
 
             foreach (var filename in args)
@@ -32,7 +32,7 @@ namespace MpsToEcosCConverter
                 for (int i = 0; i < lines.Length; i++)
                 {
                     var line = lines[i];
-                    if (line.StartsWith("*"))
+                    if (line.StartsWith("*") || string.IsNullOrWhiteSpace(line))
                     {
                         continue;
                     }

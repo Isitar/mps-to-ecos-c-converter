@@ -24,7 +24,13 @@
     <None Update="lpa.mps">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="misc07.mps">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="noswot.mps">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="vpm2.mps">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
